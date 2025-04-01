@@ -1,21 +1,14 @@
 let users = [];
-
 let room = "room1";
 let nickname = Math.floor(Math.random() * 1000000);
-
 let data = {};
-
-const socket = io.connect(location.href);
-
-//复制按钮图标
-const copyButtonIcon = `<svg height="30px" viewBox="0 -960 960 960" width="30px" fill="#CCCCCC"><path d="M360-240q-33 0-56.5-23.5T280-320v-480q0-33 23.5-56.5T360-880h360q33 0 56.5 23.5T800-800v480q0 33-23.5 56.5T720-240H360Zm0-80h360v-480H360v480ZM200-80q-33 0-56.5-23.5T120-160v-560h80v560h440v80H200Zm160-240v-480 480Z"/></svg>`;
-
-//复制按钮成功图标
-const copyButtonSuccessIcon = `<svg height="30px" viewBox="0 -960 960 960" width="30px" fill="#CCCCCC"><path d="M400-304 240-464l56-56 104 104 264-264 56 56-320 320Z"/></svg>`;
+const icons = {
+  copy: `<svg height="30px" viewBox="0 -960 960 960" width="30px" fill="#CCCCCC"><path d="M360-240q-33 0-56.5-23.5T280-320v-480q0-33 23.5-56.5T360-880h360q33 0 56.5 23.5T800-800v480q0 33-23.5 56.5T720-240H360Zm0-80h360v-480H360v480ZM200-80q-33 0-56.5-23.5T120-160v-560h80v560h440v80H200Zm160-240v-480 480Z"/></svg>`,
+  copySuccess: `<svg height="30px" viewBox="0 -960 960 960" width="30px" fill="#CCCCCC"><path d="M400-304 240-464l56-56 104 104 264-264 56 56-320 320Z"/></svg>`,
+};
 connectFlaskWebSocket();
 initializePage();
-
-function createUserChatItem(name) {
+function createChatItem(name, message, isFile = false, fileName = "") {
   const chatBox = document.querySelector(".chat-wrapper");
   const chatItem = document.createElement("div");
   chatItem.className = "chat-item";
@@ -23,102 +16,56 @@ function createUserChatItem(name) {
   chatItemNews.className = `chat-item-news${
     name === nickname ? " my_user" : ""
   }`;
-
+  if (isFile) {
+    chatItemNews.innerHTML = `
+        <div class="chat-item-news-name">${name}</div>
+        <div class="chat-item-news-content${
+          name === nickname ? " my_user" : ""
+        }">
+        <div>${fileName}</div>
+        <progress value="0" max="100"></progress>
+        <span>0%</span>
+        </div>`;
+  } else {
+    msg = message
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/ /g, "&nbsp;");
+    chatItemNews.innerHTML = `
+        <div class="chat-item-news-name">${name}</div>
+        <div class="chat-item-news-content${
+          name === nickname ? " my_user" : ""
+        }">${msg}</div>`;
+    const copyButton = document.createElement("button");
+    copyButton.className = "copy-btn";
+    copyButton.innerHTML = icons.copy;
+    copyButton.addEventListener("click", (e) => copyText(e, message));
+    chatItemNews.append(copyButton);
+  }
   chatItem.append(chatItemNews);
   chatBox.append(chatItem);
   chatBox.scrollTop = chatBox.scrollHeight;
-
-  return chatItemNews; // 返回 chatItemNews 以便后续填充内容
 }
-
-//添加系统消息
 function addSystemChatItem(message) {
   const chatBox = document.querySelector(".chat-wrapper");
   const chatItem = document.createElement("div");
   chatItem.className = "chat-item";
-
   chatItem.innerHTML = `
         <div class="chat-item-system">
         ${message}
         </div>`;
-
   chatBox.append(chatItem);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
-
-//
-//
-//
-//
-//
-//
-//
-//
-
-// 添加用户消息到窗口
-function addUserChatItem(name, message) {
-  const chatBox = document.querySelector(".chat-wrapper");
-  const chatItem = document.createElement("div");
-  chatItem.className = "chat-item";
-  const chatItemNews = document.createElement("div");
-  chatItemNews.className = `chat-item-news${
-    name === nickname ? " my_user" : ""
-  }`;
-  msg = message
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/ /g, "&nbsp;");
-  const copyText = message;
-
-  if (name === nickname) {
-    chatItemNews.innerHTML = `
-  <div class="chat-item-news-name">${name}</div>
-  <div class="chat-item-news-content my_user">${message}</div>
-    `;
-  } else {
-    chatItemNews.innerHTML = `
-  <div class="chat-item-news-name ">${name} :</div>
-  <div class="chat-item-news-content">${message}</div>
-    `;
-  }
-  const copyButton = document.createElement("button");
-  copyButton.className = "copy-btn";
-  copyButton.innerHTML = copyButtonIcon;
-
-  copyButton.addEventListener("click", function (e) {
-    copy(e, copyText);
-  });
-  chatItemNews.append(copyButton);
-  chatItem.append(chatItemNews);
-
-  chatBox.append(chatItem);
-  chatBox.scrollTop = chatBox.scrollHeight;
-}
-
-function addFileChatItem(name, fileName) {
-  const chatItemNews = createUserChatItem(name);
-
-  chatItemNews.innerHTML = `
-  <div class="chat-item-news-name">${name}</div>
-  <div class="chat-item-news-content${name === nickname ? " my_user" : ""}">
-  <div>${fileName}</div>
-  <progress value="0" max="100"></progress>
-  <span>0%</span>
-  </div> `;
-}
-
 function addReceiveFileChatItem(blob, fileName, fileType) {
   const fileURL = URL.createObjectURL(blob);
-
   const chatItems = document.getElementsByClassName("chat-item");
   const chatItem = chatItems[chatItems.length - 1];
   const chatItemNews = chatItem.getElementsByClassName("chat-item-news")[0];
-
   chatItemNews.innerHTML += `
     <div class="copy-btn">
     <a class="file" href="${fileURL}" download="${fileName}">下载</a></div>
     `;
-
   if (fileType.startsWith("image/")) {
     chatItem.innerHTML += `<img src="${fileURL}" style="max-width: 100%; height: auto;">`;
   } else if (fileType.startsWith("video/")) {
@@ -126,38 +73,26 @@ function addReceiveFileChatItem(blob, fileName, fileType) {
   } else if (fileType.startsWith("audio/")) {
     chatItem.innerHTML += `<audio controls src="${fileURL}"></audio>`;
   }
-  //   else if (fileType === "application/pdf") {
-  //     chatItem.innerHTML += `<embed src="${fileURL}" width="100%" height="500px">`;
-  //   }
 }
-
 function showNicknameModal() {
   const modal = document.getElementById("nicknameModal");
   const input = document.getElementById("nicknameInput");
   input.value = nickname;
   modal.style.display = "block";
-
-  // 自动获取焦点
   setTimeout(() => input.focus(), 0);
-
-  // 添加回车事件监听
   input.onkeydown = (event) => {
     if (event.key === "Enter") {
-      event.preventDefault(); // 阻止默认的回车行为
+      event.preventDefault();
       saveNickname();
     }
   };
 }
-
 function closeNicknameModal() {
   const modal = document.getElementById("nicknameModal");
   const input = document.getElementById("nicknameInput");
   modal.style.display = "none";
-
-  // 清除回车事件监听
   input.onkeydown = null;
 }
-
 function saveNickname() {
   const input = document.getElementById("nicknameInput");
   const nickname = input.value.trim();
@@ -165,159 +100,77 @@ function saveNickname() {
   sendText("updateName", data);
   closeNicknameModal();
 }
-
-// ... 添加昵称按钮事件监听
-document.addEventListener("DOMContentLoaded", () => {
-  document
-    .querySelector(".nickname-btn")
-    .addEventListener("click", showNicknameModal);
-});
-
 function updateProgress(offset, endOffset) {
   const chatItemNews = document.getElementsByClassName("chat-item-news");
   const chatItem = chatItemNews[chatItemNews.length - 1];
   const progress = chatItem.querySelector("progress");
   const progressText = chatItem.querySelector("span");
-
-  pace = parseInt((offset / endOffset) * 100);
+  const pace = parseInt((offset / endOffset) * 100);
   progress.value = pace;
   progressText.textContent = pace + "%";
 }
-
-//
 document.addEventListener("DOMContentLoaded", () => {
-  document.querySelector(".file-btn").addEventListener("click", async () => {
+  document
+    .querySelector(".nickname-btn")
+    .addEventListener("click", showNicknameModal);
+  document.querySelector(".file-btn").addEventListener("click", () => {
     const input = document.createElement("input");
     input.type = "file";
-    input.onchange = async (e) => {
+    input.addEventListener("change", (e) => {
       if (e.target.files.length > 0) {
-        file = e.target.files[0];
-        // addUserChatItem(nickname, "[文件]" + e.target.files[0].name);
-
-        addFileChatItem(nickname, file.name);
-        sendFile(file);
+        createChatItem(nickname, "", true, e.target.files[0].name);
+        sendFile(e.target.files[0]);
       }
-    };
+    });
     input.click();
   });
-});
-
-document.addEventListener("DOMContentLoaded", function () {
-  const dropArea = document.body;
-
-  //  监听拖拽进入
+  document
+    .querySelector(".toggle-users-btn")
+    .addEventListener("click", toggleUsersList);
+  document
+    .querySelector(".mobile-overlay")
+    .addEventListener("click", toggleUsersList);
   document.body.addEventListener("dragenter", (e) => {
     e.preventDefault();
-    dropArea.classList.add("dragover");
-    console.log(e);
+    document.body.classList.add("dragover");
   });
-
-  //  监听拖拽悬停
-  document.body.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    console.log(e);
-  });
-
-  //  监听拖拽离开
+  document.body.addEventListener("dragover", (e) => e.preventDefault());
   document.body.addEventListener("dragleave", (e) => {
-    if (!dropArea.contains(e.relatedTarget)) {
-      dropArea.classList.remove("dragover");
-      console.log(e);
+    if (!document.body.contains(e.relatedTarget)) {
+      document.body.classList.remove("dragover");
     }
   });
-  //  监听放置文件
   document.body.addEventListener("drop", (e) => {
     e.preventDefault();
-    dropArea.classList.remove("dragover");
-
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      //   console.log("收到文件:", files);
-      addFileChatItem(nickname, files[0].name);
-      sendFile(files[0]);
+    document.body.classList.remove("dragover");
+    if (e.dataTransfer.files.length > 0) {
+      createChatItem(nickname, "", true, e.dataTransfer.files[0].name);
+      sendFile(e.dataTransfer.files[0]);
     }
   });
 });
-
-// let droptarget = document.body;
-// //监听拖拽事件，实现文件上传。
-// async function handleEvent(event) {
-//   console.log("监听拖拽事件");
-//   event.preventDefault();
-//   if (event.type === "drop") {
-//     console.log("OK");
-// droptarget.classList.remove("dragover");
-
-//   if (event.dataTransfer.files.length > 0) {
-//     await sendFile(event.dataTransfer.files[0]);
-//   }
-// } else if (event.type === "dragleave") {
-//   droptarget.classList.remove("dragover");
-// } else {
-//   droptarget.classList.add("dragover");
-//   }
-// }
-
-// 发送消息到服务器
-function sendFlaskWebSocketMessage(message) {
-  const data = { message: message };
-  console.log("发送消息:", data);
-
-  socket.send(data);
-
-  // sendFlaskWebSocket("message", data);
+function toggleUsersList() {
+  document.body.classList.toggle("show-users");
 }
-
-// 发送消息
 function sendMessage() {
-  const message = messageInput.value;
-
-  addUserChatItem(nickname, message);
-
+  createChatItem(nickname, messageInput.value);
+  socket.send({ message: messageInput.value });
   messageInput.value = "";
-  sendFlaskWebSocketMessage(message);
 }
-
-//复制
-async function copy(e, msg) {
-  const currentTarget = e.currentTarget;
-
-  try {
-    await navigator.clipboard.writeText(msg);
-    //复制成功-替换图标
-    copySuccess();
-  } catch (error) {}
-
-  function copySuccess() {
-    currentTarget.innerHTML = copyButtonSuccessIcon;
-    const timer = setTimeout(() => {
-      currentTarget.innerHTML = copyButtonIcon;
-      clearTimeout(timer);
-    }, 1000);
-  }
+async function copyText(e, msg) {
+  const button = e.currentTarget; // 先保存按钮元素
+  navigator.clipboard.writeText(msg).then(() => {
+    button.innerHTML = icons.copySuccess;
+    setTimeout(() => (button.innerHTML = icons.copy), 1000);
+  });
 }
-
-// 发送消息按钮
-function sendMessageButton() {
-  //   if (messageInput.value.trim()) {
-  //     // 只有当消息不为空时才发送
-  //     sendMessage();
-  //   }
-
-  sendMessage();
-}
-
-// textarea 文本框 messageInput
 function enterTxt(event) {
   if (event.shiftKey && event.keyCode === 13) {
   } else if (event.keyCode === 13) {
-    //回车
     sendMessage();
     event.preventDefault();
   }
 }
-
-// 用户列表
 function updateUsers(users) {
   document.querySelector("#users").innerHTML = users
     .map((u) => {
@@ -336,16 +189,3 @@ function updateUsers(users) {
     })
     .join("");
 }
-function toggleUsersList() {
-  document.body.classList.toggle("show-users");
-}
-// 为切换按钮和叠加层添加事件侦听器
-document.addEventListener("DOMContentLoaded", function () {
-  console.log();
-
-  const toggleBtn = document.querySelector(".toggle-users-btn");
-  const overlay = document.querySelector(".mobile-overlay");
-
-  toggleBtn.addEventListener("click", toggleUsersList);
-  overlay.addEventListener("click", toggleUsersList);
-});

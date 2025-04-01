@@ -5,20 +5,27 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 
 app = Flask(__name__, template_folder="../templates", static_folder="../static")
 socketio = SocketIO(app, cors_allowed_origins="*")  # 允许跨域访问
+clients = {}
 
 
 @app.route("/")
 def index():
-    return render_template("index.html")  # 渲染 HTML 前端
+    return render_template("index.html")
+
+
+def forward_event(event, data, room):
+    print(f"收到 {event}: {data}")
+    emit(event, data, room=room)
 
 
 # 客户端发送信令消息（offer）
 # WebRTC 连接的发起方（通常是第一个开始连接的客户端）向对方发送的一个会话描述
 @socketio.on("offer")
-def handle_offer(offer_data):
-    print(f"收到 offer: {offer_data}")
+def handle_offer(offer):
+    print(f"收到 offer: {offer}")
+    client = clients[request.sid]
     # 转发给目标客户端
-    emit("offer", offer_data, room="room1")
+    emit("offer", offer, room=client["room"])
 
 
 # 客户端发送信令消息（answer）
@@ -26,8 +33,9 @@ def handle_offer(offer_data):
 @socketio.on("answer")
 def handle_answer(answer_data):
     print(f"收到 answer: {answer_data}")
+    client = clients[request.sid]
     # 转发给目标客户端
-    emit("answer", answer_data, room="room1")
+    emit("answer", answer_data, room=client["room"])
 
 
 # 客户端发送 ICE candidates
@@ -35,12 +43,9 @@ def handle_answer(answer_data):
 @socketio.on("ice_candidate")
 def handle_ice_candidate(candidate_data):
     print(f"收到 ICE candidate: {candidate_data}")
+    client = clients[request.sid]
     # 转发给目标客户端
-    emit("ice_candidate", candidate_data, room="room1")
-
-
-# 存储所有客户端连接
-clients = {}
+    emit("ice_candidate", candidate_data, room=client["room"])
 
 
 @socketio.on("connect")
@@ -50,51 +55,49 @@ def handle_connect():
 
 @socketio.on("joinRoom")
 def on_join(data):
-
-    room = str(data["room"])
-    join_room(data["room"])
+    room = data["room"]
+    join_room(room)
     print(f"加入房间: {room}")
-    sid = request.sid  # 获取当前连接的 session ID
-
+    sid = request.sid
     clients[sid] = {"sid": sid, "name": data["name"], "room": room}
-
-    userNames = get_user_name()
-    message = f"用户 {data["name"]} 加入房间"
-    result = {"userNames": userNames, "message": message}
-
+    result = {"userNames": get_user_name(), "message": f"用户 {data["name"]} 加入房间"}
     emit("joinRoom", result, room=room)
 
 
 @socketio.on("message")
 def handle_message(data):
-    sid = request.sid
-    client = clients[sid]
-
     print(f"收到消息: {data}")
-
-    message = f"{data["message"]}"
-    result = {"name": client["name"], "message": message}
-
-    emit("message", result, room=client["room"])
+    sid = request.sid
+    if not sid in clients:
+        return
+    client = clients[request.sid]
+    emit(
+        "message",
+        {"name": client["name"], "message": f"{data["message"]}"},
+        room=client["room"],
+    )
 
 
 @socketio.on("updateName")
 def handle_update_name(data):
-    sid = request.sid
-    client = clients[sid]
-
     print(f"收到消息: {data}")
-
-    clients[sid]["name"] = data["name"]
-
-    result = {"name": data["name"], "userNames": get_user_name()}
-
-    emit("updateName", result, room=client["room"])
+    sid = request.sid
+    if not sid in clients:
+        return
+    client = clients[sid]
+    clients["name"] = data["name"]
+    emit(
+        "updateName",
+        {"name": data["name"], "userNames": get_user_name()},
+        room=client["room"],
+    )
 
 
 @socketio.on("file")
 def handle_file(data):
     sid = request.sid
+    if not sid in clients:
+        return
     client = clients[sid]
 
     if data["message"] == "start":
@@ -110,7 +113,6 @@ def handle_file(data):
             "name": client["name"],
             "message": "EOF",
         }
-
     else:
         result = {
             "name": client["name"],
@@ -123,18 +125,16 @@ def handle_file(data):
 
 @socketio.on("disconnect")
 def handle_disconnect():
-    sid = request.sid  # 获取当前断开连接的 session ID
+    sid = request.sid
 
     if sid in clients:
         client = clients[sid]
         print(f"客户端断开连接: {sid}")
-
-        message = f"用户 {client["name"]} 断开连接"
-
-        result = {"userNames": get_user_name(), "message": message}
-
+        result = {
+            "userNames": get_user_name(),
+            "message": f"用户 {client["name"]} 断开连接",
+        }
         emit("joinRoom", result, room=client["room"])
-
         del clients[sid]  # 从字典中移除
     else:
         print("未知客户端断开连接")
@@ -150,25 +150,19 @@ def handle_disconnect():
 
 
 def get_user_name():
-    userNames = []
-    for _, client in clients.items():
-
-        userNames.append(client["name"])
-
-    print(f"当前用户数量: {len(clients)}")
-    return userNames
+    return [client["name"] for client in clients.values()]
 
 
 if __name__ == "__main__":
     port = 5000
 
     while True:
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            s.bind(("0.0.0.0", port))  # 绑定端口
-            s.close()  # 释放端口
-            print(f"正在端口 {port} 执行服务...")
-            socketio.run(app, host="0.0.0.0", port=port, debug=True)
-        except OSError:  # 端口被占用，尝试下一个
-            print(f"端口 {port} 正在使用中，正在尝试 {port + 1}...")
-            port += 1
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(("0.0.0.0", port))  # 绑定端口
+                print(f"正在端口 {port} 执行服务...")
+                break
+            except OSError:  # 端口被占用，尝试下一个
+                print(f"端口 {port} 正在使用中，正在尝试 {port + 1}...")
+                port += 1
+    socketio.run(app, host="0.0.0.0", port=port, debug=True)
