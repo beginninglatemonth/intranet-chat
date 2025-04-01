@@ -62,7 +62,7 @@ pip install flask flask-socketio eventlet
 1. **克隆项目**
 
    ```bash
-   git clone https://github.com/your-repo/webrtc-lan-share.git
+   git clone https://github.com/beginninglatemonth/intranet-chat.git
    cd intranet-chat
    ```
 
