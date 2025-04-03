@@ -158,11 +158,22 @@ function sendMessage() {
   messageInput.value = "";
 }
 async function copyText(e, msg) {
-  const button = e.currentTarget; // 先保存按钮元素
-  navigator.clipboard.writeText(msg).then(() => {
-    button.innerHTML = icons.copySuccess;
-    setTimeout(() => (button.innerHTML = icons.copy), 1000);
-  });
+  // 只能在 HTTPS 或 localhost 下使用
+  // const button = e.currentTarget; // 先保存按钮元素
+  // navigator.clipboard.writeText(msg).then(() => {
+  //   button.innerHTML = icons.copySuccess;
+  //   setTimeout(() => (button.innerHTML = icons.copy), 1000);
+  // });
+
+  const button = e.currentTarget;
+  const textArea = document.createElement("textarea");
+  textArea.value = msg;
+  document.body.appendChild(textArea);
+  textArea.select();
+  document.execCommand("copy");
+  document.body.removeChild(textArea);
+  button.innerHTML = icons.copySuccess;
+  setTimeout(() => (button.innerHTML = icons.copy), 1000);
 }
 function enterTxt(event) {
   if (event.shiftKey && event.keyCode === 13) {
