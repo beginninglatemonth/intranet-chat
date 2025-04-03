@@ -95,7 +95,7 @@ function closeNicknameModal() {
 }
 function saveNickname() {
   const input = document.getElementById("nicknameInput");
-  const nickname = input.value.trim();
+  nickname = input.value.trim();
   data = { name: nickname };
   sendText("updateName", data);
   closeNicknameModal();
@@ -183,20 +183,17 @@ function enterTxt(event) {
   }
 }
 function updateUsers(users) {
-  document.querySelector("#users").innerHTML = users
-    .map((u) => {
-      isConnected = true;
-      //   isConnected = false;
-      const statusClass = isConnected ? "connected" : "disconnected";
-      const statusIcon = `<svg height="24px" viewBox="0 -960 960 960" width="24px" fill="#75FB4C"><path d="M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/></svg>`;
-      return `
-        <li>
-          <span class="connection-status ${statusClass}">
-            ${statusIcon}
-          </span>
-          ${u}${u === nickname ? "（我）" : ""}
-        </li>
-      `;
-    })
-    .join("");
+  const userList = document.querySelector("#users");
+  const fragment = document.createDocumentFragment();
+  users.forEach((user) => {
+    const statusIcon = `<svg height="24px" viewBox="0 -960 960 960" width="24px" fill="#75FB4C"><path d="M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/></svg>`;
+    const li = document.createElement("li");
+    li.innerHTML = `
+      <span class="connection-status connected">${statusIcon}</span>
+      ${user}${user === nickname ? "（我）" : ""}
+    `;
+    fragment.appendChild(li);
+  });
+  userList.innerHTML = "";
+  userList.appendChild(fragment); // 一次性更新 DOM，提高渲染性能
 }

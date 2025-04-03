@@ -23,6 +23,8 @@ def forward_event(event, data, room):
 @socketio.on("offer")
 def handle_offer(offer):
     print(f"收到 offer: {offer}")
+    if not request.sid in clients:
+        return
     client = clients[request.sid]
     # 转发给目标客户端
     emit("offer", offer, room=client["room"])
@@ -67,9 +69,6 @@ def on_join(data):
 @socketio.on("message")
 def handle_message(data):
     print(f"收到消息: {data}")
-    sid = request.sid
-    if not sid in clients:
-        return
     client = clients[request.sid]
     emit(
         "message",
@@ -82,10 +81,8 @@ def handle_message(data):
 def handle_update_name(data):
     print(f"收到消息: {data}")
     sid = request.sid
-    if not sid in clients:
-        return
     client = clients[sid]
-    clients["name"] = data["name"]
+    clients[sid]["name"] = data["name"]
     emit(
         "updateName",
         {"name": data["name"], "userNames": get_user_name()},
@@ -96,8 +93,6 @@ def handle_update_name(data):
 @socketio.on("file")
 def handle_file(data):
     sid = request.sid
-    if not sid in clients:
-        return
     client = clients[sid]
 
     if data["message"] == "start":
@@ -124,9 +119,8 @@ def handle_file(data):
 
 
 @socketio.on("disconnect")
-def handle_disconnect():
+def handle_disconnect(message):
     sid = request.sid
-
     if sid in clients:
         client = clients[sid]
         print(f"客户端断开连接: {sid}")

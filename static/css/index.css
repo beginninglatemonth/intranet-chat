@@ -329,9 +329,9 @@ progress::-moz-progress-bar {
   color: #4CAF50;
 }
 
-.connection-status .disconnected {
+/* .connection-status .disconnected {
   color: #F44336;
-}
+} */
 
 .modal {
   display: none;

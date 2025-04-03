@@ -33,9 +33,7 @@ function connectFlaskWebSocket() {
     }
   });
   socket.on("updateName", function (data) {
-    users = data.userNames;
-    nickname = data.name;
-    updateUsers(users);
+    updateUsers(data.userNames);
   });
   const receivedChunks = [];
   let fileInfo = {};
