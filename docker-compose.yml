@@ -1,0 +1,8 @@
+version: "3"
+services:
+  app:
+    image: intranet-chat
+    build: .
+    container_name: intranet-chat-1
+    ports:
+      - "5000:5000"

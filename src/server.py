@@ -60,7 +60,7 @@ def on_join(data):
     print(f"加入房间: {room}")
     sid = request.sid
     clients[sid] = {"sid": sid, "name": data["name"], "room": room}
-    result = {"userNames": get_user_name(), "message": f"用户 {data["name"]} 加入房间"}
+    result = {"userNames": get_user_name(), "message": f"用户 {data['name']} 加入房间"}
     emit("joinRoom", result, room=room)
 
 
@@ -73,7 +73,7 @@ def handle_message(data):
     client = clients[request.sid]
     emit(
         "message",
-        {"name": client["name"], "message": f"{data["message"]}"},
+        {"name": client["name"], "message": f"{data['message']}"},
         room=client["room"],
     )
 
@@ -132,7 +132,7 @@ def handle_disconnect():
         print(f"客户端断开连接: {sid}")
         result = {
             "userNames": get_user_name(),
-            "message": f"用户 {client["name"]} 断开连接",
+            "message": f"用户 {client['name']} 断开连接",
         }
         emit("joinRoom", result, room=client["room"])
         del clients[sid]  # 从字典中移除
