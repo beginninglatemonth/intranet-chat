@@ -124,12 +124,12 @@ def handle_disconnect(message):
     if sid in clients:
         client = clients[sid]
         print(f"客户端断开连接: {sid}")
+        del clients[sid]  # 从字典中移除
         result = {
             "userNames": get_user_name(),
             "message": f"用户 {client['name']} 断开连接",
         }
         emit("joinRoom", result, room=client["room"])
-        del clients[sid]  # 从字典中移除
     else:
         print("未知客户端断开连接")
 

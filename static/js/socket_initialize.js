@@ -18,9 +18,8 @@ function connectFlaskWebSocket() {
   });
   socket.on("joinRoom", function (data) {
     // console.log("收到房间消息:", data);
-    users = data.userNames;
     addSystemChatItem(data.message);
-    updateUsers(users);
+    updateUsers(data.userNames);
   });
   socket.on("system", function (data) {
     // console.log("收到系统消息:", data);
